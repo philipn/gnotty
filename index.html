@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Gnotty by stephenmcd</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Gnotty</h1>
+        <h2>gnotty ties the knot between the web and IRC.</h2>
+        <a href="https://github.com/stephenmcd/gnotty" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <p>Created by <a href="http://twitter.com/stephen_mcd">Stephen McDonald</a></p>
+
+<p>Gnotty ties the knot between the web and IRC. It is designed to assist
+open source projects that host an IRC channel for collaboration on
+their project.
+Gnotty is <a href="http://www.linfo.org/bsdlicense.html">BSD licensed</a>.</p>
+
+<p>Gnotty is comprised of several parts. Primarily Gnotty provides a
+modern web client for communicating with an IRC channel via a web
+browser. The web server uses <a href="http://www.gevent.org">gevent</a> and
+<a href="http://en.wikipedia.org/wiki/WebSockets">WebSockets</a>, which provide
+the communication layer between the IRC channel and the web browser.
+Twitter's <a href="http://twitter.github.com/bootstrap/">Bootstrap</a> is used
+to style the web interface, with customisable templates provided for
+skinning.</p>
+
+<p>Secondly, Gnotty provides the ability to run a highly customisable
+IRC bot. Different classes of bots can be configured on startup, and
+bots can perform different services such as message logging and
+interacting with users in the IRC channel. Bots also contain webhooks,
+which allows bots to receive input over HTTP from external services.</p>
+
+<p>Gnotty also provides an optional Django application for archiving IRC
+messages for browsing and searching via a web interface. By default
+the IRC bot uses Python's logging module to provide configurable
+logging handlers for IRC messages. When the Django application is
+used, a logging handler is added that logs all IRC messages to the
+Django project's database. The Django application then provides all
+the necessary views and templates for messages to be searched by
+keyword, or browsed by date with monthly calendars.</p>
+
+<p>Note that the Django application is entirely optional. Gnotty can
+be run without using Django at all, as a stand-alone gevent web
+server that provides the web interface to an IRC channel, with
+configurable IRC bots.</p>
+
+<h1>Installation</h1>
+
+<p>The easiest way to install Gnotty is directly from PyPi using
+<a href="http://www.pip-installer.org">pip</a> by running the command below::</p>
+
+<pre><code>$ pip install -U gnotty
+</code></pre>
+
+<p>Otherwise you can download Gnotty and install it directly from
+source::</p>
+
+<pre><code>$ python setup.py install
+</code></pre>
+
+<h1>Configuration</h1>
+
+<p>Gnotty is configured via a handful of settings. When integrated
+with Django, these settings can be defined in your Django project's
+<code>settings.py</code> module. When Gnotty is run as a stand-alone
+client, these same settings can be defined via the command line, or
+in a separate Python configuration module. See the "Stand-Alone Web
+Client" section below for details.</p>
+
+<ul>
+<li>
+<code>GNOTTY_IRC_HOST</code> - IRC host address to connect to.
+<em>string, default: irc.freenode.net</em>
+</li>
+<li>
+<code>GNOTTY_IRC_PORT</code> - IRC port to connect to.
+<em>integer, default: 6667</em>
+</li>
+<li>
+<code>GNOTTY_HTTP_HOST</code> - HTTP host address to serve from.
+<em>string, default: 127.0.0.1</em>
+</li>
+<li>
+<code>GNOTTY_HTTP_PORT</code> - HTTP port to serve from.
+<em>integer, default: 8080</em>
+</li>
+<li>
+<code>GNOTTY_IRC_CHANNEL</code> - IRC channel to join.
+<em>string, default: #gnotty</em>
+</li>
+<li>
+<code>GNOTTY_BOT_CLASS</code> - Dotted Python path to the IRC client bot
+class to run.
+<em>string, default: gnotty.bots.BaseBot</em>
+</li>
+<li>
+<code>GNOTTY_BOT_NICKNAME</code> - IRC nickname the logging client will
+use.
+<em>string, default: gnotty</em>
+</li>
+<li>
+<code>GNOTTY_DAEMON</code> - run in daemon mode.
+<em>boolean, default: False</em>
+</li>
+<li>
+<code>GNOTTY_PID_FILE</code> - path to write PID file to when in daemon
+mode.
+<em>string, default: [tmp]/gnotty-[http-host]-[http-port].pid</em>
+</li>
+</ul><p>To be clear: the IRC host and port are for specifing the IRC server to
+connect to. The HTTP host and port are what will be used to host the
+gevent/WebSocket server.</p>
+
+<h1>Django Integration</h1>
+
+<p>With the above settings defined in your Django project's
+<code>settings.py</code> module, a few more steps are required. As with most
+Django apps, add <code>gnotty</code> to your <code>INSTALLED_APPS</code> setting, and
+<code>gnotty.urls</code> to your project's <code>urls.py</code> module::</p>
+
+<pre><code># settings.py
+INSTALLED_APPS = (
+    # other apps here
+    'gnotty',
+)
+
+# urls.py
+from django.conf.urls.defaults import patterns, include, url
+urlpatterns = patterns('',
+    # other patterns here
+    ('^irc/', include('gnotty.urls')),
+)
+</code></pre>
+
+<p>As you can see we've mounted all of the urls Gnotty provides under
+the prefix <code>/irc/</code> - feel free to use whatever suits you here. With
+this prefix, the URL on our Django development server
+<a href="http://127.0.0.1:8000/irc/">http://127.0.0.1:8000/irc/</a> will load
+the chat interface to the IRC channel, along with a search form for
+searching the message archive, and links to browsing the archive by
+date.</p>
+
+<p>The final step when integrated with Django is to run the Gnotty
+server itself. The Gnotty server is backed by gevent, and will host
+the WebSocket bridge to the IRC channel. It will also start up the
+IRC bot that will connect to the channel, and log all of the messages
+in the channel to the database archive.</p>
+
+<p>Running the Gnotty server when integrated with Django is simply a
+matter of running the <code>gnottify</code> Django management command::</p>
+
+<pre><code>$ python manage.py gnottify
+</code></pre>
+
+<h1>Stand-Alone Web Client</h1>
+
+<p>As mentioned, Gnotty can also be run as a stand-alone web client
+without using Django at all. In this mode, only the web interface to
+the IRC channel is provided, along with whichever IRC bot class is
+configured. Message logging can be configured using standard handlers
+for the <code>logging</code> module in Python's standard library.</p>
+
+<p>Once installed, the command <code>gnottify</code> should be available on your
+system, and all of the options described earlier can be provided as
+arguments to it::</p>
+
+<pre><code>$ gnottify --help
+Usage: gnottify [options]
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -A HOST, --irc-host=HOST
+                        IRC host address to connect to
+                        [default: irc.freenode.net]
+  -P PORT, --irc-port=PORT
+                        IRC port to connect to
+                        [default: 6667]
+  -a HOST, --http-host=HOST
+                        HTTP host address to serve from
+                        [default: 127.0.0.1]
+  -p PORT, --http-port=PORT
+                        HTTP port to serve from
+                        [default: 8080]
+  -C CHANNEL, --irc-channel=CHANNEL
+                        IRC channel to join
+                        [default: #gnotty]
+  -c DOTTED_PYTHON_PATH, --bot-class=DOTTED_PYTHON_PATH
+                        Dotted Python path to the IRC client bot class to run
+                        [default: gnotty.bots.LoggingBot]
+  -n NICKNAME, --bot-nickname=NICKNAME
+                        IRC nickname the bot will use
+                        [default: gnotty]
+  -D, --daemon          run in daemon mode
+  -k, --kill            Shuts down a previously started daemon
+  -F FILE_PATH, --pid-file=FILE_PATH
+                        path to write PID file to when in daemon mode
+  -f FILE_PATH, --conf-file=FILE_PATH
+                        path to a Python config file to load options from
+</code></pre>
+
+<p>Note the final argument in the list, <code>--conf-file</code>. This can be used
+to provide the path to a Python config module, that contains each of
+the settings described earlier. Any options provided via command-line
+arguments will take precedence over any options defined in the Python
+configuration module.</p>
+
+<h1>Daemon Mode</h1>
+
+<p>Gnotty can be configured to run as a background process when the
+<code>GNOTTY_DAEMON</code> setting is set to <code>True</code> (the <code>--daemon</code> arg
+when running stand-alone). When in daemon mode, Gnotty will write its
+process ID to the absolute file path specfified by the
+<code>GNOTTY_PID_FILE</code> setting (the <code>--pid-file</code> arg when running
+stand-alone). If the PID file path is not configured, Gnotty will use
+a file name based on the HTTP host and port, in your operating
+system's location for temporary files.</p>
+
+<p>When run in daemon mode, Gnotty will check for an existing PID file
+and if found, will attempt to shut down a previously started server
+with the same PID file.</p>
+
+<h1>IRC Bots</h1>
+
+<p>When running, Gnotty hosts an IRC bot that will connect to the
+configured IRC channel. The <code>gnotty.bots.BaseBot</code> bot is run by
+default, which implements message logging and an empty interface for
+webhooks, which allows the IRC bot to receive data over HTTP.</p>
+
+<p>You can implement your own IRC bot simply by subclassing
+<code>gnotty.bots.BaseBot</code> and defining the Python dotted path to it on
+startup, via the <code>GNOTTY_BOT_CLASS</code> setting (the <code>--bot-class</code> arg
+when running stand-alone).</p>
+
+<p>The <code>gnotty.bots.BaseBot</code> class is derived from the third-party
+<code>irclib</code> package's <code>irc.client.SimpleIRCClient</code> class (and
+translated into a Python new-style class for sanity). Consult the
+<code>irclib</code> docs and code for details about each of the methods that
+are implemented for handling events with an IRC channel.</p>
+
+<p>These are the built-in IRC bot classes provided by the
+<code>gnotty.bots</code> module:</p>
+
+<ul>
+<li>
+<code>gnotty.bots.BaseBot</code> - The default bot class that implements
+logging and webhooks. Your custom bots should subclass this.</li>
+<li>
+<code>gnotty.bots.ChatBot</code> - A bot that demonstrates interacting with
+the IRC channel by greeting and responding to other users.
+Requires the <code>nltk</code> package to be installed.</li>
+<li>
+<code>gnotty.bots.CommitBot</code> - A base bot class for receiving commit
+information for version control systems via bot webhooks, and
+relaying the commits to the IRC channel. Used as the base for the
+<code>GitHubBot</code> and <code>BitBucketBot</code> classes.</li>
+<li>
+<code>gnotty.bots.GitHubBot</code> - <code>CommitBot</code> subclass for
+<a href="http://github.com">GitHub</a>.</li>
+<li>
+<code>gnotty.bots.BitBucketBot</code> - <code>CommitBot</code> subclass for
+<a href="http://bitbucket.org">Bitbucket</a>.</li>
+</ul><h1>Bot Webhooks</h1>
+
+<p>IRC bots run by Gnotty contain the ability to receive data over HTTP
+via webhooks. The gevent web server will intercept any URLs prefixed
+with the path <code>/webhook/</code>, and pass the request onto the
+<code>on_webhook</code> method defined on the bot class running. The
+<code>on_webhook</code> method receives the following arguments:</p>
+
+<ul>
+<li>
+<code>environ</code> - The raw environment dict supplied by the gevent web
+server that contains all information about the HTTP request.</li>
+<li>
+<code>url</code> - The actual URL accessed.</li>
+<li>
+<code>params</code> - A dictionary containing all of the POST and GET data.</li>
+</ul><p>Note that the <code>url</code> and <code>params</code> arguments are provided for
+convenience, with their values retrieved from the <code>environ</code>
+argument.</p>
+
+<p>Here's an example bot implementing a webhook that reads a
+query-string value and sends it to the IRC channel::</p>
+
+<p># in my_bot.py</p>
+
+<p>from gnotty.bots import BaseBot</p>
+
+<p>class MyWebhookBot(BaseBot):
+      def on_webhook(self, environ, url, params):
+          # Get the "message" query-string parameter.
+          self.message_channel(params["message"])</p>
+
+<p>Then with Gnotty started using the following arguments::</p>
+
+<p>$ gnottify --http-host=127.0.0.1 --http-port=8000 --bot-class=my_bot.MyWebhookBot</p>
+
+<p>Hitting the URL <code>http://127.0.0.1:8000/webhook/?message=Hello</code> would
+cause the bot to send the message "Hello" to the IRC channel.</p>
+
+<h1>Message Logging</h1>
+
+<p>By default, each IRC message in the channel is logged by the IRC bot
+run by Gnotty. Logging occurs using <a href="http://docs.python.org/library/logging.html">Python's logging module</a>, to the logger named
+<code>irc</code>.</p>
+
+<p>Each log record contains the following attributes, where <code>record</code> is
+the log record instance:</p>
+
+<ul>
+<li>
+<code>record.server</code> - The IRC server the message occurred on.</li>
+<li>
+<code>record.channel</code> - The IRC channel the message occurred on.</li>
+<li>
+<code>record.nickname</code> - The nickname of the user who sent the
+message.</li>
+<li>
+<code>record.msg</code> - The message itself.</li>
+</ul><p>Here's an example of adding an extra logging handler for IRC messages::</p>
+
+<p>from logging import getLogger, StreamHandler</p>
+
+<p>class MyLogHandler(StreamHandler):
+      def emit(self, record):
+          # Do something cool with the log record.
+          print record.msg</p>
+
+<p>getLogger("irc").addHandler(MyLogHandler())</p>
+
+<h1>JavaScript Client</h1>
+
+<p>The web client that Gnotty provides includes all the necessary
+JavaScript files for communicating with the WebSocket server, such as
+Douglas Crockford's <code>json2.js</code>, and the <code>socket.io.js</code> library
+itself. Also provided is the file <code>gnotty.js</code> which implements a
+couple of public functions used by the web interface. The first is the
+<code>gnotty</code> JavaScript function, which deals directly with the HTML
+structure of the chat template::</p>
+
+<pre><code>// Start up the default UI. This function isn't very
+// interesting, since it's bound to the HTML provided
+// by Gnotty's chat template.
+gnotty({
+    httpHost:     '127.0.0.1',
+    httpPort:     '8080',
+    ircHost:      'irc.freenode.net',
+    ircPort:      '6667',
+    ircChannel:   '#gnotty'
+});
+</code></pre>
+
+<p>The second interface is the <code>IRCClient</code> function. This is of
+particular interest if you'd like to create your own chat interface,
+as it deals exclusively with communication between the web browser and
+the WebSocket server. Here's an example client that simply writes
+events out to the console::</p>
+
+<pre><code>// Prompt the user for a nickname and create a IRC client.
+var client = new IRCClient({
+    httpHost:     '127.0.0.1',
+    httpPort:     '8080',
+    ircHost:      'irc.freenode.net',
+    ircPort:      '6667',
+    ircChannel:   '#gnotty',
+    ircNickname:  prompt('Enter a nickname:')
+});
+
+// When the client first joins the IRC channel,
+// send a message to the channel to say hello.
+client.onJoin = function() {
+    console.log('joined the channel');
+    client.message('Hello, is it me you\'re looking for?');
+};
+
+// When someone joins or leaves the channel, we're given the
+// entire user list.
+client.onNicknames = function(nicknames) {
+    console.log('The user list changed, here it is: ' + nicknames.join(', '));
+});
+
+// Whenever a message is received from the channel, it's an
+// object with nickname and message properties.
+client.onMessage = function(data) {
+    console.log(data.nickname + ' wrote: ' + data.message);
+});
+
+// When we leave, reload the page.
+client.onLeave = function() {
+    location.reload();
+};
+
+// The IRC server rejected the nickname.
+client.onInvalid = function() {
+    console.log('Invalid nickname, please try again.');
+};
+</code></pre>
+
+<p>As you may have guessed, the server-side settings configured for
+Gnotty are passed directly into the <code>gnotty</code> JavaScript function,
+which then creates its own <code>IRCClient</code> instance.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/stephenmcd/gnotty/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/stephenmcd/gnotty/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/stephenmcd/gnotty"></a> is maintained by <a href="https://github.com/stephenmcd">stephenmcd</a>.</p>
+
+          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
